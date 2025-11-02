@@ -33,11 +33,18 @@ const Payment = ({ orderId, amount, onSuccess, onError }) => {
       setLoading(true);
       setError(null);
 
-      // Create payment order
+      // Get user info from localStorage
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : {};
+
+      // Create payment order with user info
       const { data } = await axios.post('/api/payments/create', {
         order_id: orderId,
         amount: amount,
-        currency: 'INR'
+        currency: 'INR',
+        email: user.email,
+        phone: user.phoneNumber || user.phone || '',
+        username: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username || ''
       });
 
       const options = {

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import {
   Container,
   Box,
@@ -11,10 +12,13 @@ import {
   Grid,
 } from '@mui/material';
 import { toast } from 'react-toastify';
+import { setCredentials } from '../../store/slices/authSlice';
 import api from '../../services/api';
+import OtpVerification from './OtpVerification';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -23,6 +27,8 @@ const Register: React.FC = () => {
     phoneNumber: '',
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showOtpVerification, setShowOtpVerification] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -34,16 +40,74 @@ const Register: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
     try {
-      await api.post('/auth/register', formData);
-      toast.success('Registration successful! Please login.');
-      navigate('/login');
+      // Request OTP instead of direct registration
+      await api.post('/api/auth/request-signup-otp', formData);
+      
+      // Store form data for OTP verification
+      sessionStorage.setItem('pendingOtpData', JSON.stringify(formData));
+      
+      toast.success('OTP sent to your email! Please check your inbox.');
+      setShowOtpVerification(true);
     } catch (err: any) {
       setError(err.response?.data?.message || 'An error occurred');
-      toast.error(err.response?.data?.message || 'Registration failed');
+      toast.error(err.response?.data?.message || 'Failed to send OTP');
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleOtpSuccess = (token: string) => {
+    // Extract user data from JWT token
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const user = {
+        id: payload.userId,
+        email: payload.email,
+        firstName: payload.firstName || '',
+        lastName: payload.lastName || '',
+        phoneNumber: payload.phoneNumber || '',
+        role: payload.role || 'user',
+        name: `${payload.firstName || ''} ${payload.lastName || ''}`.trim() || payload.email,
+        twoFactorEnabled: payload.twoFactorEnabled || false
+      };
+      
+      // Store user data and token
+      dispatch(setCredentials({ user, token }));
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('token', token);
+      
+      // Clear session storage
+      sessionStorage.removeItem('pendingOtpData');
+      
+      toast.success('Registration successful!');
+      navigate('/');
+    } catch (error) {
+      console.error('Error parsing token:', error);
+      toast.error('Registration successful but there was an issue with user data. Please login again.');
+      navigate('/login');
+    }
+  };
+
+  const handleOtpBack = () => {
+    setShowOtpVerification(false);
+    sessionStorage.removeItem('pendingOtpData');
+  };
+
+  // Show OTP verification if in OTP step
+  if (showOtpVerification) {
+    return (
+      <OtpVerification
+        email={formData.email}
+        onSuccess={handleOtpSuccess}
+        onBack={handleOtpBack}
+        title="Verify Your Email"
+        subtitle="Enter the 6-digit code sent to your email to complete registration"
+      />
+    );
+  }
 
   return (
     <Container maxWidth="xs">
@@ -96,6 +160,7 @@ const Register: React.FC = () => {
                 id="email"
                 label="Email Address"
                 name="email"
+                type="email"
                 autoComplete="email"
                 value={formData.email}
                 onChange={handleChange}
@@ -132,8 +197,9 @@ const Register: React.FC = () => {
             fullWidth
             variant="contained"
             sx={{ mt: 3, mb: 2 }}
+            disabled={loading}
           >
-            Sign Up
+            {loading ? 'Sending OTP...' : 'Send OTP & Continue'}
           </Button>
           <Box sx={{ textAlign: 'center' }}>
             <Link component={RouterLink} to="/login" variant="body2">

@@ -27,8 +27,10 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Handle unauthorized access
+    // Only force logout/redirect for 401 if NOT on login or 2fa page and NOT a 2FA-required error
+    const is2FA = error.response?.data?.twoFactorRequired;
+    const isOnAuthPage = window.location.pathname === '/login' || window.location.pathname === '/2fa';
+    if (error.response?.status === 401 && !is2FA && !isOnAuthPage) {
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
@@ -37,3 +39,25 @@ api.interceptors.response.use(
 );
 
 export default api; 
+
+export const getProductImage = async (productId:any) => {
+  try {
+    const res = await api.get(`/api/products/${productId}`);
+    return res.data?.imageUrl || null; // assuming response = { imageUrl: '...' }
+  } catch (err) {
+    console.error('Error fetching image:', err);
+    return null;
+  }
+};
+
+export const sendChatbotMessage = async (message: string) => {
+  const res = await api.post('/api/chatbot/message', { message });
+  return res.data;
+};
+
+export const checkEmailExists = async (email: string) => {
+  const res = await api.post('/api/auth/check-email', { email });
+  return res.data; // { exists: true/false }
+};
+
+// NOTE: For user-specific products, use '/api/products/mine' endpoint instead of '?mine=true'.

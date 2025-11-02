@@ -10,6 +10,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import App from './App';
 import { store } from './store';
 import theme from './theme';
+console.log("✅ App loaded");
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement

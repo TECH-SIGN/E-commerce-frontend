@@ -1,0 +1,16 @@
+node_modules
+build
+dist
+.git
+*.log
+*.md
+Dockerfile
+docker-compose.yml
+.env
+coverage
+.idea
+.vscode
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+*.tsbuildinfo

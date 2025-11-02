@@ -4,7 +4,7 @@ interface Config {
 }
 
 const config: Config = {
-  apiUrl: process.env.REACT_APP_API_URL || 'http://localhost:3000',
+  apiUrl: process.env.REACT_APP_API_URL || 'http://localhost:80',
   env: process.env.REACT_APP_ENV || 'development',
 };
 
